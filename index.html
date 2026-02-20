@@ -16,6 +16,14 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        .score-change {
+            animation: pop 0.3s ease-out;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); color: #ef4444; }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -24,7 +32,6 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
         
-        // Simulación de iconos de Lucide para React
         const Icon = ({ name, size = 24, className = "" }) => {
             useEffect(() => {
                 if (window.lucide) {
@@ -41,8 +48,11 @@
             const [unlockedWords, setUnlockedWords] = useState(Array(8).fill(null));
             const [finalGuess, setFinalGuess] = useState("");
             const [isSuccess, setIsSuccess] = useState(false);
+            const [score, setScore] = useState(1000);
+            const [lastScoreChange, setLastScoreChange] = useState(0);
 
             const CORRECT_PHRASE = "la lógica de conjuntos es la base digital";
+            const PENALTY = 50;
             
             const clues = [
                 {
@@ -61,8 +71,8 @@
                     title: "Pista 2: Comprensión de Conjuntos",
                     problem: "Sea A = {x ∈ ℕ | x es par ∧ 2 < x ≤ 10}. ¿Cuántos elementos tiene el conjunto A?",
                     options: [
-                        { label: "5 elementos", word: "lógica" },
-                        { label: "4 elementos", word: "física" },
+                        { label: "5 elementos", word: "física" },
+                        { label: "4 elementos", word: "lógica" },
                         { label: "3 elementos", word: "teoría" }
                     ],
                     answer: "4 elementos"
@@ -150,11 +160,30 @@
                 setSelectedClue(null);
             };
 
+            const handleOptionClick = (opt, answer) => {
+                if (opt.label === answer) {
+                    unlockClue(selectedClue.id, opt.word);
+                } else {
+                    setScore(prev => Math.max(0, prev - PENALTY));
+                    setLastScoreChange(Date.now());
+                    alert(`¡Incorrecto! -${PENALTY} puntos. Analiza mejor la lógica del conjunto.`);
+                }
+            };
+
+            const getRank = (finalScore) => {
+                if (finalScore >= 1000) return "Analista de Élite";
+                if (finalScore >= 800) return "Técnico Especialista";
+                if (finalScore >= 500) return "Operador Digital";
+                return "Usuario en Prácticas";
+            };
+
             const checkFinalPhrase = () => {
                 if (finalGuess.toLowerCase().trim() === CORRECT_PHRASE) {
                     setIsSuccess(true);
                 } else {
-                    alert("Contraseña incorrecta. Revisa las palabras obtenidas.");
+                    setScore(prev => Math.max(0, prev - 20)); // Pequeña penalización por adivinar mal la frase
+                    setLastScoreChange(Date.now());
+                    alert("Frase incorrecta. Asegúrate de que las palabras tengan sentido lógico.");
                 }
             };
 
@@ -162,16 +191,30 @@
                 return (
                     <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-6 text-center">
                         <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-2xl border-4 border-green-500">
-                            <Icon name="wifi" size={80} className="text-green-500 mx-auto mb-6" />
-                            <h1 className="text-4xl font-black text-green-700 mb-4">¡CONECTADO!</h1>
+                            <Icon name="award" size={80} className="text-yellow-500 mx-auto mb-6" />
+                            <h1 className="text-4xl font-black text-green-700 mb-2">¡SISTEMA DESBLOQUEADO!</h1>
                             <p className="text-xl text-gray-700 mb-6">
-                                Buen trabajo, <strong>{userName.nombre} {userName.apellido}</strong>. 
-                                Has demostrado un dominio excelente de la Teoría de Conjuntos.
+                                Buen trabajo, <strong>{userName.nombre} {userName.apellido}</strong>.
                             </p>
-                            <div className="bg-green-100 p-4 rounded-xl font-mono text-2xl text-green-800 uppercase">
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-8">
+                                <div className="bg-slate-100 p-4 rounded-2xl">
+                                    <p className="text-sm text-slate-500 uppercase font-bold">Puntaje Final</p>
+                                    <p className="text-4xl font-black text-indigo-600">{score}</p>
+                                </div>
+                                <div className="bg-slate-100 p-4 rounded-2xl">
+                                    <p className="text-sm text-slate-500 uppercase font-bold">Rango Obtenido</p>
+                                    <p className="text-xl font-bold text-slate-800">{getRank(score)}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-green-100 p-4 rounded-xl font-mono text-xl text-green-800 uppercase mb-8">
                                 {CORRECT_PHRASE}
                             </div>
-                            <button onClick={() => window.location.reload()} className="mt-8 px-6 py-3 bg-green-600 text-white rounded-full hover:bg-green-700 transition">Reiniciar</button>
+                            
+                            <button onClick={() => window.location.reload()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-full hover:bg-green-700 transition">
+                                Intentar de nuevo
+                            </button>
                         </div>
                     </div>
                 );
@@ -188,17 +231,26 @@
                                     <p className="text-xs text-indigo-300">UTU - 1º Bachillerato</p>
                                 </div>
                             </div>
-                            {userName.nombre && (
-                                <div className="flex items-center gap-2 text-sm bg-slate-700 px-3 py-1 rounded-full">
-                                    <Icon name="user" size={14} />
-                                    <span>{userName.nombre} {userName.apellido}</span>
+                            
+                            <div className="flex items-center gap-6">
+                                <div key={lastScoreChange} className="flex flex-col items-end score-change">
+                                    <span className="text-[10px] text-slate-500 uppercase font-bold leading-none">Puntos</span>
+                                    <span className="text-2xl font-black text-yellow-500 leading-none">{score}</span>
                                 </div>
-                            )}
+                                {userName.nombre && (
+                                    <div className="hidden md:flex items-center gap-2 text-sm bg-slate-700 px-3 py-1 rounded-full border border-slate-600">
+                                        <Icon name="user" size={14} />
+                                        <span>{userName.nombre} {userName.apellido}</span>
+                                    </div>
+                                )}
+                            </div>
                         </header>
 
                         {currentStep === 'login' && (
                             <div className="bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-700 max-w-md mx-auto">
-                                <h2 className="text-2xl font-bold mb-6 text-center text-white">Registro</h2>
+                                <h2 className="text-2xl font-bold mb-6 text-center text-white flex items-center justify-center gap-2">
+                                    <Icon name="key" /> Identificación
+                                </h2>
                                 <form onSubmit={handleStart} className="space-y-4 text-white">
                                     <div>
                                         <label className="block text-sm font-medium mb-1 text-slate-400">Nombre</label>
@@ -208,7 +260,15 @@
                                         <label className="block text-sm font-medium mb-1 text-slate-400">Apellido</label>
                                         <input required type="text" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none" value={userName.apellido} onChange={(e) => setUserName({...userName, apellido: e.target.value})} />
                                     </div>
-                                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2">Comenzar <Icon name="arrow-right" /></button>
+                                    <div className="bg-slate-900/50 p-4 rounded-xl text-xs text-slate-400 border border-slate-700 mb-4">
+                                        <p><strong>Reglas de puntuación:</strong></p>
+                                        <ul className="list-disc ml-4 mt-2">
+                                            <li>Inicias con 1000 puntos.</li>
+                                            <li>Error en pista: -50 puntos.</li>
+                                            <li>Error en frase final: -20 puntos.</li>
+                                        </ul>
+                                    </div>
+                                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2">INICIAR MISIÓN <Icon name="arrow-right" /></button>
                                 </form>
                             </div>
                         )}
@@ -218,37 +278,52 @@
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {clues.map((clue, idx) => (
                                         <button key={clue.id} onClick={() => { setSelectedClue(clue); setCurrentStep('clue'); }} className={`relative p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${unlockedWords[idx] ? 'bg-indigo-900/40 border-indigo-500' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}>
-                                            {unlockedWords[idx] ? <Icon name="lock-open" className="text-indigo-400" /> : <Icon name="lock" className="text-slate-500" />}
+                                            {unlockedWords[idx] ? <Icon name="unlock" className="text-indigo-400" /> : <Icon name="lock" className="text-slate-500" />}
                                             <span className="font-bold">Pista {idx + 1}</span>
                                             {unlockedWords[idx] && <span className="text-xs bg-indigo-500 text-white px-2 py-0.5 rounded italic">{unlockedWords[idx]}</span>}
                                         </button>
                                     ))}
                                 </div>
+                                
                                 <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-inner">
+                                    <p className="text-center text-xs text-slate-500 mb-3 uppercase tracking-widest">Contraseña encriptada</p>
                                     <div className="flex flex-wrap justify-center gap-2 min-h-[60px] items-center">
                                         {unlockedWords.map((word, i) => (
-                                            <div key={i} className={`px-4 py-2 rounded-lg border-b-2 font-mono text-lg ${word ? 'border-indigo-500 text-indigo-300' : 'border-slate-600 text-slate-600'}`}>
+                                            <div key={i} className={`px-4 py-2 rounded-lg border-b-2 font-mono text-lg transition-all ${word ? 'border-indigo-500 text-indigo-300' : 'border-slate-600 text-slate-700'}`}>
                                                 {word || "________"}
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-center gap-4">
-                                    <input type="text" placeholder="Frase completa..." className="w-full max-w-md bg-slate-800 border-2 border-slate-700 rounded-full px-6 py-4 text-center text-xl text-white outline-none" value={finalGuess} onChange={(e) => setFinalGuess(e.target.value)} />
-                                    <button onClick={checkFinalPhrase} className="px-10 py-4 bg-green-600 hover:bg-green-500 text-white font-black rounded-full shadow-lg transition">INTENTAR CONEXIÓN</button>
+                                
+                                <div className="flex flex-col items-center gap-4 bg-slate-800/50 p-8 rounded-3xl border border-slate-700">
+                                    <Icon name="terminal" className="text-indigo-500" />
+                                    <input type="text" placeholder="Escribe la frase completa aquí..." className="w-full max-w-md bg-slate-900 border-2 border-slate-700 rounded-full px-6 py-4 text-center text-xl text-white outline-none focus:border-indigo-500 transition-all" value={finalGuess} onChange={(e) => setFinalGuess(e.target.value)} />
+                                    <button onClick={checkFinalPhrase} className="px-12 py-4 bg-green-600 hover:bg-green-500 text-white font-black rounded-full shadow-lg transition active:scale-95">ESTABLECER CONEXIÓN</button>
                                 </div>
                             </div>
                         )}
 
                         {currentStep === 'clue' && selectedClue && (
                             <div className="bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-700">
-                                <button onClick={() => setCurrentStep('dashboard')} className="text-slate-400 hover:text-white mb-4 flex items-center gap-2 text-sm">← Volver</button>
-                                <h2 className="text-2xl font-bold mb-6">{selectedClue.title}</h2>
-                                <p className="text-lg bg-slate-900 p-6 rounded-2xl border border-slate-700 mb-8">{selectedClue.problem}</p>
+                                <button onClick={() => setCurrentStep('dashboard')} className="text-slate-400 hover:text-white mb-6 flex items-center gap-2 text-sm group">
+                                    <Icon name="chevron-left" className="group-hover:-translate-x-1 transition-transform" /> Volver al panel central
+                                </button>
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="bg-indigo-600 p-3 rounded-2xl"><Icon name="binary" size={28} /></div>
+                                    <h2 className="text-3xl font-black">{selectedClue.title}</h2>
+                                </div>
+                                <div className="text-xl bg-slate-900 p-8 rounded-3xl border border-slate-700 mb-8 leading-relaxed font-medium">
+                                    {selectedClue.problem}
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     {selectedClue.options.map((opt, i) => (
-                                        <button key={i} onClick={() => { if (opt.label === selectedClue.answer) unlockClue(selectedClue.id, opt.word); else alert("Incorrecto"); }} className="p-5 bg-slate-700 hover:bg-indigo-600 rounded-2xl transition-all text-left text-white border border-slate-600">
-                                            <span className="block text-xs text-slate-400 mb-1">Opción {i+1}</span>
+                                        <button 
+                                            key={i} 
+                                            onClick={() => handleOptionClick(opt, selectedClue.answer)} 
+                                            className="p-6 bg-slate-700 hover:bg-indigo-600 rounded-2xl transition-all text-left text-white border border-slate-600 hover:scale-[1.02] active:scale-95 shadow-md"
+                                        >
+                                            <span className="block text-xs text-indigo-300 font-bold mb-1">OPCIÓN {i+1}</span>
                                             <span className="font-bold text-lg">{opt.label}</span>
                                         </button>
                                     ))}
