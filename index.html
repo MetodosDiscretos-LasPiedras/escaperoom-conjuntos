@@ -30,7 +30,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useCallback } = React;
         
         const Icon = ({ name, size = 24, className = "" }) => {
             useEffect(() => {
@@ -44,6 +44,7 @@
         const App = () => {
             const [userName, setUserName] = useState({ nombre: '', apellido: '' });
             const [currentStep, setCurrentStep] = useState('login'); 
+            const [clues, setClues] = useState([]);
             const [selectedClue, setSelectedClue] = useState(null);
             const [unlockedWords, setUnlockedWords] = useState(Array(8).fill(null));
             const [finalGuess, setFinalGuess] = useState("");
@@ -53,101 +54,170 @@
 
             const CORRECT_PHRASE = "la lógica de conjuntos es la base digital";
             const PENALTY = 50;
-            
-            const clues = [
-                {
-                    id: 0,
-                    title: "Pista 1: Unión y Cardinalidad",
-                    problem: "Dados los conjuntos A = {1, 2, 3, 4, 5} y B = {4, 5, 6, 7}. Si el resultado de |A ∪ B| es la respuesta:",
-                    options: [
-                        { label: "7", word: "La" },
-                        { label: "9", word: "El" },
-                        { label: "5", word: "Internet" }
-                    ],
-                    answer: "7"
-                },
-                {
-                    id: 1,
-                    title: "Pista 2: Comprensión de Conjuntos",
-                    problem: "Sea A = {x ∈ ℕ | x es par ∧ 2 < x ≤ 10}. ¿Cuántos elementos tiene el conjunto A?",
-                    options: [
-                        { label: "5 elementos", word: "física" },
-                        { label: "4 elementos", word: "lógica" },
-                        { label: "3 elementos", word: "teoría" }
-                    ],
-                    answer: "4 elementos"
-                },
-                {
-                    id: 2,
-                    title: "Pista 3: Complemento",
-                    problem: "Si el conjunto Universal U = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9} y A = {x | x es múltiplo de 3}, ¿cuántos elementos hay en A' (complemento de A)?",
-                    options: [
-                        { label: "6", word: "de" },
-                        { label: "7", word: "para" },
-                        { label: "4", word: "con" }
-                    ],
-                    answer: "6"
-                },
-                {
-                    id: 3,
-                    title: "Pista 4: Diferencia Simétrica",
-                    problem: "Dados A = {1, 2, 3} y B = {3, 4, 5}. ¿Cuál es el conjunto A Δ B (diferencia simétrica)?",
-                    options: [
-                        { label: "{1, 2, 4, 5}", word: "conjuntos" },
-                        { label: "{3}", word: "sistemas" },
-                        { label: "{1, 2, 3, 4, 5}", word: "redes" }
-                    ],
-                    answer: "{1, 2, 4, 5}"
-                },
-                {
-                    id: 4,
-                    title: "Pista 5: Intersección",
-                    problem: "Si A ∩ B = B, ¿qué podemos afirmar necesariamente?",
-                    options: [
-                        { label: "B ⊆ A", word: "es" },
-                        { label: "A ⊆ B", word: "no" },
-                        { label: "A = B", word: "quizás" }
-                    ],
-                    answer: "B ⊆ A"
-                },
-                {
-                    id: 5,
-                    title: "Pista 6: Producto Cartesiano",
-                    problem: "Si |A| = 3 y |B| = 2, ¿cuántos elementos tiene el producto cartesiano A × B?",
-                    options: [
-                        { label: "6", word: "la" },
-                        { label: "5", word: "una" },
-                        { label: "9", word: "otra" }
-                    ],
-                    answer: "6"
-                },
-                {
-                    id: 6,
-                    title: "Pista 7: Diferencia de Conjuntos",
-                    problem: "Dados A = {1, 2, 3, 4} y B = {3, 4, 5, 6}. ¿Cuál es el resultado de la operación A - B?",
-                    options: [
-                        { label: "{1, 2}", word: "base" },
-                        { label: "{5, 6}", word: "fuente" },
-                        { label: "{3, 4}", word: "clave" }
-                    ],
-                    answer: "{1, 2}"
-                },
-                {
-                    id: 7,
-                    title: "Pista 8: Conjuntos por Extensión",
-                    problem: "Sea A = {x | x es una letra de la palabra 'METODOS' y es una vocal}. Determina el conjunto A por extensión.",
-                    options: [
-                        { label: "{E, O}", word: "digital" },
-                        { label: "{M, T, D, S}", word: "binaria" },
-                        { label: "{E, O, O}", word: "técnica" }
-                    ],
-                    answer: "{E, O}"
-                }
-            ];
+
+            // Función para generar las pistas con valores aleatorios
+            const generateClues = useCallback(() => {
+                const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
+                const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+
+                const newClues = [
+                    // Pista 1: Unión y Cardinalidad (Palabra: La)
+                    (() => {
+                        const start = randomInt(1, 3);
+                        const endA = start + 4; // Tamaño fijo de 5
+                        const A = Array.from({length: 5}, (_, i) => i + start);
+                        const intersect = [A[3], A[4]];
+                        const B = [...intersect, A[4]+1, A[4]+2]; // Tamaño de 4, intersecta en 2
+                        const unionSize = new Set([...A, ...B]).size;
+                        return {
+                            id: 0,
+                            title: "Pista 1: Unión y Cardinalidad",
+                            problem: `Dados A = {${A.join(', ')}} y B = {${B.join(', ')}}. ¿Cuál es el valor de |A ∪ B|?`,
+                            options: shuffle([
+                                { label: String(unionSize), word: "La" },
+                                { label: String(unionSize + 2), word: "El" },
+                                { label: String(unionSize - 1), word: "Internet" }
+                            ]),
+                            answer: String(unionSize)
+                        };
+                    })(),
+                    // Pista 2: Comprensión (Palabra: lógica)
+                    (() => {
+                        const min = randomInt(1, 5);
+                        const count = 4; // Queremos que la respuesta sea 4
+                        const max = min + (count * 2);
+                        return {
+                            id: 1,
+                            title: "Pista 2: Comprensión de Conjuntos",
+                            problem: `Sea A = {x ∈ ℕ | x es par ∧ ${min} < x ≤ ${max}}. ¿Cuántos elementos tiene el conjunto A?`,
+                            options: shuffle([
+                                { label: "4 elementos", word: "lógica" },
+                                { label: "5 elementos", word: "física" },
+                                { label: "3 elementos", word: "teoría" }
+                            ]),
+                            answer: "4 elementos"
+                        };
+                    })(),
+                    // Pista 3: Complemento (Palabra: de)
+                    (() => {
+                        const uSize = randomInt(10, 12);
+                        const mult = randomInt(3, 4);
+                        const U = Array.from({length: uSize}, (_, i) => i);
+                        const A = U.filter(x => x % mult === 0 && x !== 0);
+                        const complementSize = U.length - A.length;
+                        return {
+                            id: 2,
+                            title: "Pista 3: Complemento",
+                            problem: `Si el conjunto Universal U tiene ${uSize} elementos (del 0 al ${uSize-1}) y A = {x ∈ U | x es múltiplo de ${mult} (sin contar el 0)}, ¿cuántos elementos hay en A'?`,
+                            options: shuffle([
+                                { label: String(complementSize), word: "de" },
+                                { label: String(complementSize - 2), word: "para" },
+                                { label: String(complementSize + 1), word: "con" }
+                            ]),
+                            answer: String(complementSize)
+                        };
+                    })(),
+                    // Pista 4: Diferencia Simétrica (Palabra: conjuntos)
+                    (() => {
+                        const n = randomInt(10, 20);
+                        const A = [n, n+1, n+2];
+                        const B = [n+2, n+3, n+4];
+                        const symDiff = `{${n}, ${n+1}, ${n+3}, ${n+4}}`;
+                        return {
+                            id: 3,
+                            title: "Pista 4: Diferencia Simétrica",
+                            problem: `Dados A = {${A.join(', ')}} y B = {${B.join(', ')}}. ¿Cuál es el conjunto A Δ B?`,
+                            options: shuffle([
+                                { label: symDiff, word: "conjuntos" },
+                                { label: `{${n+2}}`, word: "sistemas" },
+                                { label: `{${A.concat(B).join(', ')}}`, word: "redes" }
+                            ]),
+                            answer: symDiff
+                        };
+                    })(),
+                    // Pista 5: Intersección/Inclusión (Palabra: es)
+                    (() => {
+                        const sets = [
+                            { q: "A ∩ B = B", a: "B ⊆ A" },
+                            { q: "A ∪ B = A", a: "B ⊆ A" },
+                            { q: "A ∩ B = A", a: "A ⊆ B" }
+                        ];
+                        const pick = sets[randomInt(0, 2)];
+                        return {
+                            id: 4,
+                            title: "Pista 5: Propiedades de Intersección",
+                            problem: `Si se cumple que ${pick.q}, ¿cuál de las siguientes afirmaciones es necesariamente verdadera?`,
+                            options: shuffle([
+                                { label: pick.a, word: "es" },
+                                { label: pick.a === "B ⊆ A" ? "A ⊆ B" : "B ⊆ A", word: "no" },
+                                { label: "A ∩ B = ∅", word: "quizás" }
+                            ]),
+                            answer: pick.a
+                        };
+                    })(),
+                    // Pista 6: Producto Cartesiano (Palabra: la)
+                    (() => {
+                        const sizeA = randomInt(2, 4);
+                        const sizeB = randomInt(2, 3);
+                        const res = sizeA * sizeB;
+                        return {
+                            id: 5,
+                            title: "Pista 6: Producto Cartesiano",
+                            problem: `Si el conjunto A tiene ${sizeA} elementos y el conjunto B tiene ${sizeB} elementos, ¿cuántos pares ordenados tiene el conjunto A × B?`,
+                            options: shuffle([
+                                { label: String(res), word: "la" },
+                                { label: String(sizeA + sizeB), word: "una" },
+                                { label: String(res + 2), word: "otra" }
+                            ]),
+                            answer: String(res)
+                        };
+                    })(),
+                    // Pista 7: Diferencia (Palabra: base)
+                    (() => {
+                        const n = randomInt(1, 100);
+                        const A = [n, n+1, n+2, n+3];
+                        const B = [n+2, n+3, n+4, n+5];
+                        const diff = `{${n}, ${n+1}}`;
+                        return {
+                            id: 6,
+                            title: "Pista 7: Diferencia de Conjuntos",
+                            problem: `Si A = {${A.join(', ')}} y B = {${B.join(', ')}}. Calcula A - B:`,
+                            options: shuffle([
+                                { label: diff, word: "base" },
+                                { label: `{${n+4}, ${n+5}}`, word: "fuente" },
+                                { label: "∅", word: "clave" }
+                            ]),
+                            answer: diff
+                        };
+                    })(),
+                    // Pista 8: Extensión (Palabra: digital)
+                    (() => {
+                        const words = [
+                            { w: "DISCRETOS", v: "{I, E, O}" },
+                            { w: "CONJUNTOS", v: "{O, U}" },
+                            { w: "BINARIO", v: "{I, A, O}" }
+                        ];
+                        const pick = words[randomInt(0, 2)];
+                        return {
+                            id: 7,
+                            title: "Pista 8: Conjuntos por Extensión",
+                            problem: `Sea V el conjunto de las vocales (sin repetir) de la palabra "${pick.w}". Determina V por extensión:`,
+                            options: shuffle([
+                                { label: pick.v, word: "digital" },
+                                { label: "{A, E, I, O, U}", word: "binaria" },
+                                { label: "{M, T, D, S}", word: "técnica" }
+                            ]),
+                            answer: pick.v
+                        };
+                    })()
+                ];
+                setClues(newClues);
+            }, []);
 
             const handleStart = (e) => {
                 e.preventDefault();
                 if (userName.nombre && userName.apellido) {
+                    generateClues();
                     setCurrentStep('dashboard');
                 }
             };
@@ -181,7 +251,7 @@
                 if (finalGuess.toLowerCase().trim() === CORRECT_PHRASE) {
                     setIsSuccess(true);
                 } else {
-                    setScore(prev => Math.max(0, prev - 20)); // Pequeña penalización por adivinar mal la frase
+                    setScore(prev => Math.max(0, prev - 20));
                     setLastScoreChange(Date.now());
                     alert("Frase incorrecta. Asegúrate de que las palabras tengan sentido lógico.");
                 }
@@ -208,7 +278,7 @@
                                 </div>
                             </div>
 
-                            <div className="bg-green-100 p-4 rounded-xl font-mono text-xl text-green-800 uppercase mb-8">
+                            <div className="bg-green-100 p-4 rounded-xl font-mono text-xl text-green-800 uppercase mb-8 leading-tight">
                                 {CORRECT_PHRASE}
                             </div>
                             
@@ -261,20 +331,18 @@
                                         <input required type="text" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none" value={userName.apellido} onChange={(e) => setUserName({...userName, apellido: e.target.value})} />
                                     </div>
                                     <div className="bg-slate-900/50 p-4 rounded-xl text-xs text-slate-400 border border-slate-700 mb-4">
-                                        <p><strong>Reglas de puntuación:</strong></p>
-                                        <ul className="list-disc ml-4 mt-2">
-                                            <li>Inicias con 1000 puntos.</li>
-                                            <li>Error en pista: -50 puntos.</li>
-                                            <li>Error en frase final: -20 puntos.</li>
-                                        </ul>
+                                        <p><strong>Desafío Aleatorio Activo:</strong></p>
+                                        <p className="mt-1 italic">Cada sesión genera valores distintos para los conjuntos.</p>
                                     </div>
-                                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2">INICIAR MISIÓN <Icon name="arrow-right" /></button>
+                                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 uppercase tracking-wide">
+                                        INICIAR ESCAPE ROOM <Icon name="arrow-right" />
+                                    </button>
                                 </form>
                             </div>
                         )}
 
                         {currentStep === 'dashboard' && (
-                            <div className="space-y-8">
+                            <div className="space-y-8 animate-in fade-in duration-500">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {clues.map((clue, idx) => (
                                         <button key={clue.id} onClick={() => { setSelectedClue(clue); setCurrentStep('clue'); }} className={`relative p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${unlockedWords[idx] ? 'bg-indigo-900/40 border-indigo-500' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}>
@@ -286,7 +354,7 @@
                                 </div>
                                 
                                 <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-inner">
-                                    <p className="text-center text-xs text-slate-500 mb-3 uppercase tracking-widest">Contraseña encriptada</p>
+                                    <p className="text-center text-xs text-slate-500 mb-3 uppercase tracking-widest font-bold">Estado de la Contraseña</p>
                                     <div className="flex flex-wrap justify-center gap-2 min-h-[60px] items-center">
                                         {unlockedWords.map((word, i) => (
                                             <div key={i} className={`px-4 py-2 rounded-lg border-b-2 font-mono text-lg transition-all ${word ? 'border-indigo-500 text-indigo-300' : 'border-slate-600 text-slate-700'}`}>
@@ -297,23 +365,28 @@
                                 </div>
                                 
                                 <div className="flex flex-col items-center gap-4 bg-slate-800/50 p-8 rounded-3xl border border-slate-700">
-                                    <Icon name="terminal" className="text-indigo-500" />
-                                    <input type="text" placeholder="Escribe la frase completa aquí..." className="w-full max-w-md bg-slate-900 border-2 border-slate-700 rounded-full px-6 py-4 text-center text-xl text-white outline-none focus:border-indigo-500 transition-all" value={finalGuess} onChange={(e) => setFinalGuess(e.target.value)} />
-                                    <button onClick={checkFinalPhrase} className="px-12 py-4 bg-green-600 hover:bg-green-500 text-white font-black rounded-full shadow-lg transition active:scale-95">ESTABLECER CONEXIÓN</button>
+                                    <div className="flex items-center gap-2 text-indigo-400 mb-2">
+                                        <Icon name="terminal" size={20} />
+                                        <span className="text-xs font-bold uppercase tracking-widest">Consola de Acceso Final</span>
+                                    </div>
+                                    <input type="text" placeholder="Ingresa la frase descubierta..." className="w-full max-w-md bg-slate-900 border-2 border-slate-700 rounded-full px-6 py-4 text-center text-xl text-white outline-none focus:border-indigo-500 transition-all placeholder:text-slate-700" value={finalGuess} onChange={(e) => setFinalGuess(e.target.value)} />
+                                    <button onClick={checkFinalPhrase} className="px-12 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-full shadow-lg transition active:scale-95 uppercase tracking-tighter">
+                                        Validar Credenciales
+                                    </button>
                                 </div>
                             </div>
                         )}
 
                         {currentStep === 'clue' && selectedClue && (
-                            <div className="bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-700">
+                            <div className="bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-700 animate-in zoom-in duration-200">
                                 <button onClick={() => setCurrentStep('dashboard')} className="text-slate-400 hover:text-white mb-6 flex items-center gap-2 text-sm group">
-                                    <Icon name="chevron-left" className="group-hover:-translate-x-1 transition-transform" /> Volver al panel central
+                                    <Icon name="chevron-left" className="group-hover:-translate-x-1 transition-transform" /> Volver al panel de control
                                 </button>
                                 <div className="flex items-center gap-4 mb-6">
                                     <div className="bg-indigo-600 p-3 rounded-2xl"><Icon name="binary" size={28} /></div>
                                     <h2 className="text-3xl font-black">{selectedClue.title}</h2>
                                 </div>
-                                <div className="text-xl bg-slate-900 p-8 rounded-3xl border border-slate-700 mb-8 leading-relaxed font-medium">
+                                <div className="text-xl bg-slate-900 p-8 rounded-3xl border border-slate-700 mb-8 leading-relaxed font-medium text-indigo-100">
                                     {selectedClue.problem}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -321,9 +394,9 @@
                                         <button 
                                             key={i} 
                                             onClick={() => handleOptionClick(opt, selectedClue.answer)} 
-                                            className="p-6 bg-slate-700 hover:bg-indigo-600 rounded-2xl transition-all text-left text-white border border-slate-600 hover:scale-[1.02] active:scale-95 shadow-md"
+                                            className="p-6 bg-slate-700 hover:bg-indigo-600 rounded-2xl transition-all text-left text-white border border-slate-600 hover:scale-[1.02] active:scale-95 shadow-md flex flex-col gap-1"
                                         >
-                                            <span className="block text-xs text-indigo-300 font-bold mb-1">OPCIÓN {i+1}</span>
+                                            <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest">Resultado Posible</span>
                                             <span className="font-bold text-lg">{opt.label}</span>
                                         </button>
                                     ))}
