@@ -7,11 +7,7 @@ Se trata de un **"Escape Room" matemático** enfocado en la **Teoría de Conjunt
 
 ## 🔗 Enlace de Acceso
 
-[$$INSERTAR\ AQUÍ\ TU\ ENLACE\ DE\ GITHUB\ PAGES$$
-
-_Ejemplo:_  
-https://tu-usuario.github.io/escape-room-conjuntos-utu/](https://metodosdiscretos-laspiedras.github.io/escaperoom-conjuntos/)
-
+https://metodosdiscretos-laspiedras.github.io/escaperoom-conjuntos/
 ---
 
 ## 🚀 Características Principales
