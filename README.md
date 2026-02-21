@@ -14,7 +14,6 @@ https://metodosdiscretos-laspiedras.github.io/escaperoom-conjuntos/
 
 ### 🎲 Desafíos Aleatorios
 Cada sesión genera valores y conjuntos distintos.  
-Los estudiantes no pueden simplemente copiarse los resultados, ya que deben razonar cada problema en cada intento.
 
 ### 🏆 Sistema de Puntuación
 
