@@ -4,29 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Escape Room: Métodos Discretos - UTU</title>
-    <!-- Tailwind CSS para el diseño -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React y ReactDOM desde CDN -->
+    <!-- React y ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel para procesar JSX en el navegador -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .score-change {
-            animation: pop 0.3s ease-out;
-        }
+        .score-pop { animation: pop 0.3s ease-out; }
         @keyframes pop {
             0% { transform: scale(1); }
-            50% { transform: scale(1.2); color: #ef4444; }
+            50% { transform: scale(1.15); color: #facc15; }
             100% { transform: scale(1); }
         }
     </style>
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -34,376 +32,190 @@
         
         const Icon = ({ name, size = 24, className = "" }) => {
             useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
+                if (window.lucide) window.lucide.createIcons();
             }, [name]);
             return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
         };
 
         const App = () => {
-            const [userName, setUserName] = useState({ nombre: '', apellido: '' });
-            const [currentStep, setCurrentStep] = useState('login'); 
+            const [user, setUser] = useState({ nombre: '', apellido: '' });
+            const [step, setStep] = useState('login'); 
             const [clues, setClues] = useState([]);
-            const [selectedClue, setSelectedClue] = useState(null);
-            const [unlockedWords, setUnlockedWords] = useState(Array(8).fill(null));
-            const [finalGuess, setFinalGuess] = useState("");
-            const [isSuccess, setIsSuccess] = useState(false);
+            const [activeClue, setActiveClue] = useState(null);
+            const [words, setWords] = useState(Array(8).fill(null));
+            const [guess, setGuess] = useState("");
+            const [solved, setSolved] = useState(false);
             const [score, setScore] = useState(1000);
-            const [lastScoreChange, setLastScoreChange] = useState(0);
+            const [scoreTrigger, setScoreTrigger] = useState(0);
 
-            const CORRECT_PHRASE = "la lógica de conjuntos es la base digital";
-            const PENALTY = 50;
+            const SECRET = "la lógica de conjuntos es la base digital";
 
-            // Función para generar las pistas con valores aleatorios
-            const generateClues = useCallback(() => {
-                const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
-                const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+            const initGame = useCallback(() => {
+                const rand = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
+                const sort = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
-                const newClues = [
-                    // Pista 1: Unión y Cardinalidad (Palabra: La)
+                const data = [
+                    // Pista 1: Unión (La)
                     (() => {
-                        const start = randomInt(1, 3);
-                        const endA = start + 4; // Tamaño fijo de 5
-                        const A = Array.from({length: 5}, (_, i) => i + start);
-                        const intersect = [A[3], A[4]];
-                        const B = [...intersect, A[4]+1, A[4]+2]; // Tamaño de 4, intersecta en 2
-                        const unionSize = new Set([...A, ...B]).size;
-                        return {
-                            id: 0,
-                            title: "Pista 1: Unión y Cardinalidad",
-                            problem: `Dados A = {${A.join(', ')}} y B = {${B.join(', ')}}. ¿Cuál es el valor de |A ∪ B|?`,
-                            options: shuffle([
-                                { label: String(unionSize), word: "La" },
-                                { label: String(unionSize + 2), word: "El" },
-                                { label: String(unionSize - 1), word: "Internet" }
-                            ]),
-                            answer: String(unionSize)
-                        };
+                        const n = rand(1, 5);
+                        const A = [n, n+1, n+2, n+3, n+4];
+                        const B = [n+3, n+4, n+5, n+6];
+                        const res = new Set([...A, ...B]).size;
+                        return { id: 0, title: "Unión y Cardinalidad", prob: `Dados A={${A.join(',')}} y B={${B.join(',')}}, halla |A ∪ B|:`, opts: sort([{l: String(res), w: "La"}, {l: String(res+2), w: "El"}, {l: "5", w: "Internet"}]), ans: String(res) };
                     })(),
-                    // Pista 2: Comprensión (Palabra: lógica)
+                    // Pista 2: Comprensión (lógica)
                     (() => {
-                        const min = randomInt(1, 5);
-                        const count = 4; // Queremos que la respuesta sea 4
-                        const max = min + (count * 2);
-                        return {
-                            id: 1,
-                            title: "Pista 2: Comprensión de Conjuntos",
-                            problem: `Sea A = {x ∈ ℕ | x es par ∧ ${min} < x ≤ ${max}}. ¿Cuántos elementos tiene el conjunto A?`,
-                            options: shuffle([
-                                { label: "4 elementos", word: "lógica" },
-                                { label: "5 elementos", word: "física" },
-                                { label: "3 elementos", word: "teoría" }
-                            ]),
-                            answer: "4 elementos"
-                        };
+                        const m = rand(1, 4);
+                        return { id: 1, title: "Comprensión", prob: `Sea A={x ∈ ℕ | x es par ∧ ${m} < x ≤ ${m+8}}. ¿Cuántos elementos tiene A?`, opts: sort([{l: "4 elementos", w: "lógica"}, {l: "5 elementos", w: "física"}, {l: "3 elementos", w: "redes"}]), ans: "4 elementos" };
                     })(),
-                    // Pista 3: Complemento (Palabra: de)
+                    // Pista 3: Complemento (de)
                     (() => {
-                        const uSize = randomInt(10, 12);
-                        const mult = randomInt(3, 4);
-                        const U = Array.from({length: uSize}, (_, i) => i);
-                        const A = U.filter(x => x % mult === 0 && x !== 0);
-                        const complementSize = U.length - A.length;
-                        return {
-                            id: 2,
-                            title: "Pista 3: Complemento",
-                            problem: `Si el conjunto Universal U tiene ${uSize} elementos (del 0 al ${uSize-1}) y A = {x ∈ U | x es múltiplo de ${mult} (sin contar el 0)}, ¿cuántos elementos hay en A'?`,
-                            options: shuffle([
-                                { label: String(complementSize), word: "de" },
-                                { label: String(complementSize - 2), word: "para" },
-                                { label: String(complementSize + 1), word: "con" }
-                            ]),
-                            answer: String(complementSize)
-                        };
+                        const u = rand(10, 12);
+                        const k = rand(3, 4);
+                        const countA = Math.floor((u-1)/k);
+                        const res = u - countA;
+                        return { id: 2, title: "Complemento", prob: `Si U={0,1,...,${u-1}} y A={x∈U | x es múltiplo de ${k} (x>0)}, halla |A'|:`, opts: sort([{l: String(res), w: "de"}, {l: String(res-2), w: "para"}, {l: String(res+1), w: "con"}]), ans: String(res) };
                     })(),
-                    // Pista 4: Diferencia Simétrica (Palabra: conjuntos)
+                    // Pista 4: Dif. Simétrica (conjuntos)
                     (() => {
-                        const n = randomInt(10, 20);
-                        const A = [n, n+1, n+2];
-                        const B = [n+2, n+3, n+4];
-                        const symDiff = `{${n}, ${n+1}, ${n+3}, ${n+4}}`;
-                        return {
-                            id: 3,
-                            title: "Pista 4: Diferencia Simétrica",
-                            problem: `Dados A = {${A.join(', ')}} y B = {${B.join(', ')}}. ¿Cuál es el conjunto A Δ B?`,
-                            options: shuffle([
-                                { label: symDiff, word: "conjuntos" },
-                                { label: `{${n+2}}`, word: "sistemas" },
-                                { label: `{${A.concat(B).join(', ')}}`, word: "redes" }
-                            ]),
-                            answer: symDiff
-                        };
+                        const n = rand(10, 20);
+                        const res = `{${n}, ${n+1}, ${n+3}, ${n+4}}`;
+                        return { id: 3, title: "Dif. Simétrica", prob: `Si A={${n},${n+1},${n+2}} y B={${n+2},${n+3},${n+4}}, halla A Δ B:`, opts: sort([{l: res, w: "conjuntos"}, {l: `{${n+2}}`, w: "sistemas"}, {l: "∅", w: "nodos"}]), ans: res };
                     })(),
-                    // Pista 5: Intersección/Inclusión (Palabra: es)
+                    // Pista 5: Inclusión (es)
                     (() => {
-                        const sets = [
-                            { q: "A ∩ B = B", a: "B ⊆ A" },
-                            { q: "A ∪ B = A", a: "B ⊆ A" },
-                            { q: "A ∩ B = A", a: "A ⊆ B" }
-                        ];
-                        const pick = sets[randomInt(0, 2)];
-                        return {
-                            id: 4,
-                            title: "Pista 5: Propiedades de Intersección",
-                            problem: `Si se cumple que ${pick.q}, ¿cuál de las siguientes afirmaciones es necesariamente verdadera?`,
-                            options: shuffle([
-                                { label: pick.a, word: "es" },
-                                { label: pick.a === "B ⊆ A" ? "A ⊆ B" : "B ⊆ A", word: "no" },
-                                { label: "A ∩ B = ∅", word: "quizás" }
-                            ]),
-                            answer: pick.a
-                        };
+                        const c = rand(0, 1);
+                        const q = c === 0 ? "A ∩ B = B" : "A ∪ B = A";
+                        return { id: 4, title: "Inclusión", prob: `Si se cumple que ${q}, ¿qué es necesariamente cierto?`, opts: sort([{l: "B ⊆ A", w: "es"}, {l: "A ⊆ B", w: "no"}, {l: "A = ∅", w: "si"}]), ans: "B ⊆ A" };
                     })(),
-                    // Pista 6: Producto Cartesiano (Palabra: la)
+                    // Pista 6: Prod. Cartesiano (la)
                     (() => {
-                        const sizeA = randomInt(2, 4);
-                        const sizeB = randomInt(2, 3);
-                        const res = sizeA * sizeB;
-                        return {
-                            id: 5,
-                            title: "Pista 6: Producto Cartesiano",
-                            problem: `Si el conjunto A tiene ${sizeA} elementos y el conjunto B tiene ${sizeB} elementos, ¿cuántos pares ordenados tiene el conjunto A × B?`,
-                            options: shuffle([
-                                { label: String(res), word: "la" },
-                                { label: String(sizeA + sizeB), word: "una" },
-                                { label: String(res + 2), word: "otra" }
-                            ]),
-                            answer: String(res)
-                        };
+                        const a = rand(3, 4), b = rand(2, 3);
+                        return { id: 5, title: "Prod. Cartesiano", prob: `Si |A|=${a} y |B|=${b}, ¿cuántos elementos tiene A × B?`, opts: sort([{l: String(a*b), w: "la"}, {l: String(a+b), w: "una"}, {l: "0", w: "otra"}]), ans: String(a*b) };
                     })(),
-                    // Pista 7: Diferencia (Palabra: base)
+                    // Pista 7: Diferencia / Vacío (base)
                     (() => {
-                        const n = randomInt(1, 100);
-                        const A = [n, n+1, n+2, n+3];
-                        const B = [n+2, n+3, n+4, n+5];
-                        const diff = `{${n}, ${n+1}}`;
-                        return {
-                            id: 6,
-                            title: "Pista 7: Diferencia de Conjuntos",
-                            problem: `Si A = {${A.join(', ')}} y B = {${B.join(', ')}}. Calcula A - B:`,
-                            options: shuffle([
-                                { label: diff, word: "base" },
-                                { label: `{${n+4}, ${n+5}}`, word: "fuente" },
-                                { label: "∅", word: "clave" }
-                            ]),
-                            answer: diff
-                        };
+                        const v = rand(0, 1) === 1;
+                        const n = rand(1, 30);
+                        const A = [n, n+1], B = v ? [n, n+1, n+2] : [n+2, n+3];
+                        const res = v ? "∅" : `{${n}, ${n+1}}`;
+                        return { id: 6, title: "Diferencia", prob: `Si A={${A.join(',')}} y B={${B.join(',')}}, halla A - B:`, opts: sort([{l: res, w: "base"}, {l: v ? `{${n}}` : "∅", w: "clave"}, {l: `{${n+2}}`, w: "fuente"}]), ans: res };
                     })(),
-                    // Pista 8: Extensión (Palabra: digital)
+                    // Pista 8: Extensión (digital)
                     (() => {
-                        const words = [
-                            { w: "DISCRETOS", v: "{I, E, O}" },
-                            { w: "CONJUNTOS", v: "{O, U}" },
-                            { w: "BINARIO", v: "{I, A, O}" }
-                        ];
-                        const pick = words[randomInt(0, 2)];
-                        return {
-                            id: 7,
-                            title: "Pista 8: Conjuntos por Extensión",
-                            problem: `Sea V el conjunto de las vocales (sin repetir) de la palabra "${pick.w}". Determina V por extensión:`,
-                            options: shuffle([
-                                { label: pick.v, word: "digital" },
-                                { label: "{A, E, I, O, U}", word: "binaria" },
-                                { label: "{M, T, D, S}", word: "técnica" }
-                            ]),
-                            answer: pick.v
-                        };
+                        const picks = [{w:"METODOS", v:"{E, O}"}, {w:"UTU", v:"{U}"}, {w:"DISCRETOS", v:"{I, E, O}"}];
+                        const p = picks[rand(0, 2)];
+                        return { id: 7, title: "Extensión", prob: `Sea V el conjunto de vocales sin repetir de "${p.w}". Halla V:`, opts: sort([{l: p.v, w: "digital"}, {l: "{A,E,I,O,U}", w: "binaria"}, {l: "∅", w: "técnica"}]), ans: p.v };
                     })()
                 ];
-                setClues(newClues);
+                setClues(data);
             }, []);
 
-            const handleStart = (e) => {
+            const start = (e) => {
                 e.preventDefault();
-                if (userName.nombre && userName.apellido) {
-                    generateClues();
-                    setCurrentStep('dashboard');
+                if (user.nombre && user.apellido) {
+                    initGame();
+                    setStep('dash');
                 }
             };
 
-            const unlockClue = (clueId, word) => {
-                const newUnlocked = [...unlockedWords];
-                newUnlocked[clueId] = word;
-                setUnlockedWords(newUnlocked);
-                setCurrentStep('dashboard');
-                setSelectedClue(null);
-            };
-
-            const handleOptionClick = (opt, answer) => {
-                if (opt.label === answer) {
-                    unlockClue(selectedClue.id, opt.word);
+            const handleAns = (opt, ans) => {
+                if (opt.l === ans) {
+                    const next = [...words];
+                    next[activeClue.id] = opt.w;
+                    setWords(next);
+                    setStep('dash');
                 } else {
-                    setScore(prev => Math.max(0, prev - PENALTY));
-                    setLastScoreChange(Date.now());
-                    alert(`¡Incorrecto! -${PENALTY} puntos. Analiza mejor la lógica del conjunto.`);
+                    setScore(s => Math.max(0, s - 50));
+                    setScoreTrigger(Date.now());
+                    alert("Incorrecto. Pierdes 50 puntos.");
                 }
             };
 
-            const getRank = (finalScore) => {
-                if (finalScore >= 1000) return "Analista de Élite";
-                if (finalScore >= 800) return "Técnico Especialista";
-                if (finalScore >= 500) return "Operador Digital";
-                return "Usuario en Prácticas";
-            };
-
-            const checkFinalPhrase = () => {
-                if (finalGuess.toLowerCase().trim() === CORRECT_PHRASE) {
-                    setIsSuccess(true);
-                } else {
-                    setScore(prev => Math.max(0, prev - 20));
-                    setLastScoreChange(Date.now());
-                    alert("Frase incorrecta. Asegúrate de que las palabras tengan sentido lógico.");
+            const checkFinal = () => {
+                if (guess.toLowerCase().trim() === SECRET) setSolved(true);
+                else {
+                    setScore(s => Math.max(0, s - 20));
+                    setScoreTrigger(Date.now());
+                    alert("Frase incorrecta.");
                 }
             };
 
-            if (isSuccess) {
-                return (
-                    <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-6 text-center">
-                        <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-2xl border-4 border-green-500">
-                            <Icon name="award" size={80} className="text-yellow-500 mx-auto mb-6" />
-                            <h1 className="text-4xl font-black text-green-700 mb-2">¡SISTEMA DESBLOQUEADO!</h1>
-                            <p className="text-xl text-gray-700 mb-6">
-                                Buen trabajo, <strong>{userName.nombre} {userName.apellido}</strong>.
-                            </p>
-                            
-                            <div className="grid grid-cols-2 gap-4 mb-8">
-                                <div className="bg-slate-100 p-4 rounded-2xl">
-                                    <p className="text-sm text-slate-500 uppercase font-bold">Puntaje Final</p>
-                                    <p className="text-4xl font-black text-indigo-600">{score}</p>
-                                </div>
-                                <div className="bg-slate-100 p-4 rounded-2xl">
-                                    <p className="text-sm text-slate-500 uppercase font-bold">Rango Obtenido</p>
-                                    <p className="text-xl font-bold text-slate-800">{getRank(score)}</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-green-100 p-4 rounded-xl font-mono text-xl text-green-800 uppercase mb-8 leading-tight">
-                                {CORRECT_PHRASE}
-                            </div>
-                            
-                            <button onClick={() => window.location.reload()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-full hover:bg-green-700 transition">
-                                Intentar de nuevo
-                            </button>
+            if (solved) return (
+                <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                    <div className="bg-white text-slate-900 p-10 rounded-3xl shadow-2xl max-w-lg border-t-8 border-green-500">
+                        <Icon name="award" size={64} className="text-yellow-500 mx-auto mb-4" />
+                        <h1 className="text-3xl font-black mb-2">¡SISTEMA RECUPERADO!</h1>
+                        <p className="mb-6 font-medium">{user.nombre} {user.apellido}, has salvado el WiFi.</p>
+                        <div className="bg-indigo-50 p-6 rounded-2xl mb-6">
+                            <span className="text-xs font-bold text-slate-400 block uppercase mb-1">Puntaje</span>
+                            <span className="text-5xl font-black text-indigo-600">{score}</span>
                         </div>
+                        <button onClick={() => window.location.reload()} className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold">Reiniciar</button>
                     </div>
-                );
-            }
+                </div>
+            );
 
             return (
-                <div className="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 md:p-8">
-                    <div className="max-w-4xl mx-auto">
-                        <header className="flex items-center justify-between mb-8 bg-slate-800 p-4 rounded-2xl shadow-lg border border-slate-700">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-indigo-600 p-2 rounded-lg"><Icon name="wifi" /></div>
-                                <div>
-                                    <h1 className="font-bold text-lg leading-tight">Escape Room: Métodos Discretos</h1>
-                                    <p className="text-xs text-indigo-300">UTU - 1º Bachillerato</p>
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-6">
-                                <div key={lastScoreChange} className="flex flex-col items-end score-change">
-                                    <span className="text-[10px] text-slate-500 uppercase font-bold leading-none">Puntos</span>
-                                    <span className="text-2xl font-black text-yellow-500 leading-none">{score}</span>
-                                </div>
-                                {userName.nombre && (
-                                    <div className="hidden md:flex items-center gap-2 text-sm bg-slate-700 px-3 py-1 rounded-full border border-slate-600">
-                                        <Icon name="user" size={14} />
-                                        <span>{userName.nombre} {userName.apellido}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </header>
+                <div className="max-w-4xl mx-auto p-4 md:p-8 min-h-screen">
+                    <header className="flex justify-between items-center mb-8 bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-indigo-600 p-2 rounded-lg"><Icon name="wifi" size={20} /></div>
+                            <div><h1 className="font-black text-lg">ESCAPE ROOM</h1><p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Métodos Discretos - UTU</p></div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] text-slate-500 font-bold uppercase">Puntos</p>
+                            <p className={`text-3xl font-black text-yellow-500 leading-none ${scoreTrigger ? 'score-pop' : ''}`} key={scoreTrigger}>{score}</p>
+                        </div>
+                    </header>
 
-                        {currentStep === 'login' && (
-                            <div className="bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-700 max-w-md mx-auto">
-                                <h2 className="text-2xl font-bold mb-6 text-center text-white flex items-center justify-center gap-2">
-                                    <Icon name="key" /> Identificación
-                                </h2>
-                                <form onSubmit={handleStart} className="space-y-4 text-white">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1 text-slate-400">Nombre</label>
-                                        <input required type="text" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none" value={userName.nombre} onChange={(e) => setUserName({...userName, nombre: e.target.value})} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1 text-slate-400">Apellido</label>
-                                        <input required type="text" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none" value={userName.apellido} onChange={(e) => setUserName({...userName, apellido: e.target.value})} />
-                                    </div>
-                                    <div className="bg-slate-900/50 p-4 rounded-xl text-xs text-slate-400 border border-slate-700 mb-4">
-                                        <p><strong>Desafío Aleatorio Activo:</strong></p>
-                                        <p className="mt-1 italic">Cada sesión genera valores distintos para los conjuntos.</p>
-                                    </div>
-                                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 uppercase tracking-wide">
-                                        INICIAR ESCAPE ROOM <Icon name="arrow-right" />
+                    {step === 'login' && (
+                        <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 max-w-md mx-auto shadow-2xl">
+                            <h2 className="text-2xl font-bold mb-6 text-center">Ingreso de Analista</h2>
+                            <form onSubmit={start} className="space-y-4">
+                                <input required className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 outline-none focus:border-indigo-500" placeholder="Nombre" onChange={e => setUser({...user, nombre: e.target.value})} />
+                                <input required className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 outline-none focus:border-indigo-500" placeholder="Apellido" onChange={e => setUser({...user, apellido: e.target.value})} />
+                                <button className="w-full bg-indigo-600 py-4 rounded-xl font-bold hover:bg-indigo-500 transition shadow-lg uppercase tracking-widest text-sm">Comenzar Misión</button>
+                            </form>
+                        </div>
+                    )}
+
+                    {step === 'dash' && (
+                        <div className="space-y-8 animate-in fade-in duration-500">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {clues.map((c, i) => (
+                                    <button key={c.id} onClick={() => { setActiveClue(c); setStep('clue'); }} className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all hover:scale-105 ${words[i] ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}>
+                                        <Icon name={words[i] ? "unlock" : "lock"} size={20} className={words[i] ? "text-indigo-400" : "text-slate-600"} />
+                                        <span className="text-xs font-bold uppercase">Pista {i+1}</span>
+                                        {words[i] && <span className="text-sm font-black text-indigo-200 italic">{words[i]}</span>}
                                     </button>
-                                </form>
+                                ))}
                             </div>
-                        )}
+                            <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 text-center shadow-inner">
+                                <div className="flex flex-wrap justify-center gap-2 mb-8">
+                                    {words.map((w, i) => <div key={i} className={`px-4 py-2 rounded-lg border-b-2 font-mono text-lg transition-colors ${w ? 'border-indigo-500 text-indigo-300' : 'border-slate-700 text-slate-700'}`}>{w || "________"}</div>)}
+                                </div>
+                                <input className="w-full max-w-md bg-slate-950 border border-slate-700 rounded-full px-6 py-4 text-center text-xl outline-none focus:border-indigo-500 mb-6 placeholder:text-slate-800" placeholder="Ingresa la frase descubierta..." onChange={e => setGuess(e.target.value)} />
+                                <br/><button onClick={checkFinal} className="bg-green-600 hover:bg-green-500 px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest shadow-lg transition-all active:scale-95">Validar Acceso</button>
+                            </div>
+                        </div>
+                    )}
 
-                        {currentStep === 'dashboard' && (
-                            <div className="space-y-8 animate-in fade-in duration-500">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {clues.map((clue, idx) => (
-                                        <button key={clue.id} onClick={() => { setSelectedClue(clue); setCurrentStep('clue'); }} className={`relative p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${unlockedWords[idx] ? 'bg-indigo-900/40 border-indigo-500' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}>
-                                            {unlockedWords[idx] ? <Icon name="unlock" className="text-indigo-400" /> : <Icon name="lock" className="text-slate-500" />}
-                                            <span className="font-bold">Pista {idx + 1}</span>
-                                            {unlockedWords[idx] && <span className="text-xs bg-indigo-500 text-white px-2 py-0.5 rounded italic">{unlockedWords[idx]}</span>}
-                                        </button>
-                                    ))}
-                                </div>
-                                
-                                <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-inner">
-                                    <p className="text-center text-xs text-slate-500 mb-3 uppercase tracking-widest font-bold">Estado de la Contraseña</p>
-                                    <div className="flex flex-wrap justify-center gap-2 min-h-[60px] items-center">
-                                        {unlockedWords.map((word, i) => (
-                                            <div key={i} className={`px-4 py-2 rounded-lg border-b-2 font-mono text-lg transition-all ${word ? 'border-indigo-500 text-indigo-300' : 'border-slate-600 text-slate-700'}`}>
-                                                {word || "________"}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                
-                                <div className="flex flex-col items-center gap-4 bg-slate-800/50 p-8 rounded-3xl border border-slate-700">
-                                    <div className="flex items-center gap-2 text-indigo-400 mb-2">
-                                        <Icon name="terminal" size={20} />
-                                        <span className="text-xs font-bold uppercase tracking-widest">Consola de Acceso Final</span>
-                                    </div>
-                                    <input type="text" placeholder="Ingresa la frase descubierta..." className="w-full max-w-md bg-slate-900 border-2 border-slate-700 rounded-full px-6 py-4 text-center text-xl text-white outline-none focus:border-indigo-500 transition-all placeholder:text-slate-700" value={finalGuess} onChange={(e) => setFinalGuess(e.target.value)} />
-                                    <button onClick={checkFinalPhrase} className="px-12 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-full shadow-lg transition active:scale-95 uppercase tracking-tighter">
-                                        Validar Credenciales
+                    {step === 'clue' && activeClue && (
+                        <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 animate-in zoom-in duration-200">
+                            <button onClick={() => setStep('dash')} className="text-xs text-slate-500 mb-6 flex items-center gap-2 hover:text-white transition-colors uppercase font-bold tracking-widest"><Icon name="chevron-left" size={14}/> Regresar al Panel</button>
+                            <h2 className="text-3xl font-black mb-6 tracking-tighter">{activeClue.title}</h2>
+                            <div className="bg-slate-900 p-10 rounded-3xl mb-8 text-xl border border-slate-700 leading-relaxed font-medium">{activeClue.prob}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {activeClue.opts.map((o, i) => (
+                                    <button key={i} onClick={() => handleAns(o, activeClue.ans)} className="p-8 bg-slate-700 border border-slate-600 rounded-2xl text-left hover:bg-indigo-600 transition-all font-bold group">
+                                        <span className="text-[10px] block opacity-40 mb-1 group-hover:opacity-100 uppercase tracking-widest">Opción {i+1}</span>
+                                        <span className="text-lg">{o.l}</span>
                                     </button>
-                                </div>
+                                ))}
                             </div>
-                        )}
-
-                        {currentStep === 'clue' && selectedClue && (
-                            <div className="bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-700 animate-in zoom-in duration-200">
-                                <button onClick={() => setCurrentStep('dashboard')} className="text-slate-400 hover:text-white mb-6 flex items-center gap-2 text-sm group">
-                                    <Icon name="chevron-left" className="group-hover:-translate-x-1 transition-transform" /> Volver al panel de control
-                                </button>
-                                <div className="flex items-center gap-4 mb-6">
-                                    <div className="bg-indigo-600 p-3 rounded-2xl"><Icon name="binary" size={28} /></div>
-                                    <h2 className="text-3xl font-black">{selectedClue.title}</h2>
-                                </div>
-                                <div className="text-xl bg-slate-900 p-8 rounded-3xl border border-slate-700 mb-8 leading-relaxed font-medium text-indigo-100">
-                                    {selectedClue.problem}
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {selectedClue.options.map((opt, i) => (
-                                        <button 
-                                            key={i} 
-                                            onClick={() => handleOptionClick(opt, selectedClue.answer)} 
-                                            className="p-6 bg-slate-700 hover:bg-indigo-600 rounded-2xl transition-all text-left text-white border border-slate-600 hover:scale-[1.02] active:scale-95 shadow-md flex flex-col gap-1"
-                                        >
-                                            <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest">Resultado Posible</span>
-                                            <span className="font-bold text-lg">{opt.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
             );
         };
